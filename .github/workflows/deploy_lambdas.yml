@@ -1,0 +1,53 @@
+name: Deploy Lambdas
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registry: ${{ secrets.AWS_ECR_REGISTRY }}
+
+      - name: Build and push Lambda Docker images
+        run: |
+          # Build Docker images for each Lambda function
+          for dir in lambdas/*; do
+            if [ -d "$dir" ]; then
+              function_name=$(basename "$dir")
+              echo "Building Docker image for $function_name"
+              docker build -t ${{ secrets.AWS_ECR_REGISTRY }}/$function_name:latest $dir
+              docker push ${{ secrets.AWS_ECR_REGISTRY }}/$function_name:latest
+            fi
+          done
+
+      - name: Deploy Lambdas
+        env:
+          AWS_REGION: us-east-2
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          for dir in lambdas/*; do
+            if [ -d "$dir" ]; then
+              function_name=$(basename "$dir")
+              image_uri="${{ secrets.AWS_ECR_REGISTRY }}/$function_name:latest"
+              
+              echo "Updating Lambda function $function_name"
+              aws lambda update-function-code \
+                --function-name $function_name \
+                --image-uri $image_uri \
+                --region us-east-2
+            fi
+          done
