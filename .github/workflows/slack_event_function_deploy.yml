@@ -1,5 +1,7 @@
 name: slack_event_function_deploy
+
 on: [push]
+
 jobs:
   slack_event_function_deploy:
     runs-on: ubuntu-latest
@@ -27,11 +29,13 @@ jobs:
           echo "ECR_REPOSITORY=hrbeee/slack-event" >> $GITHUB_ENV
           echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
 
-      - name: Build and push Docker image
+      - name: Build Docker image
         run: |
           echo "Building Docker image for x86_64 architecture..."
-          docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f lambdas/slack-event-function/Dockerfile .
+          docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f lambdas/slack-event-function/Dockerfile lambdas/slack-event-function
 
+      - name: Push Docker image to ECR
+        run: |
           echo "Pushing Docker image to ECR..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
