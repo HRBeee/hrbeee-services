@@ -1,8 +1,10 @@
+import boto3
 import json
-import os
+
+sqs = boto3.client('sqs')
+QUEUE_URL = os.environ.get('SLACK_EVENT_QUEUE_URL')
 
 def lambda_handler(event, context):
-    # Simulated incoming Slack event
     slack_event = {
         "event": {
             "type": "message",
@@ -11,21 +13,19 @@ def lambda_handler(event, context):
         }
     }
 
-    # Extract message and user_id from the simulated event
     message = slack_event['event']['text']
     user_id = slack_event['event']['user']
 
-    # Prepare a response (or perform another action)
-    response_message = {
+    sqs_message = {
         'message': message,
         'user_id': user_id
     }
+    sqs.send_message(
+        QueueUrl=QUEUE_URL,
+        MessageBody=json.dumps(sqs_message)
+    )
 
-    # Print the response message (for debugging purposes)
-    print(json.dumps(response_message))
-
-    # Return a response indicating that the processing is complete
     return {
         'statusCode': 200,
-        'body': json.dumps('Message processed successfully')
+        'body': json.dumps('Message sent to SQS')
     }
